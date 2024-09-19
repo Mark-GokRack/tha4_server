@@ -78,8 +78,8 @@ if __name__ == "__main__":
     if len( sys.argv ) > 2:
         host_ip = sys.argv[2]
     else:
-        # host_ip = "localhost"
-        host_ip = "192.168.10.16"
+        host_ip = "localhost"
+        #host_ip = "192.168.10.16"
     if len( sys.argv ) > 3:
         num_port = int( sys.argv[3] )
     else:
