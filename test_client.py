@@ -6,25 +6,46 @@ import time
 import tqdm
 
 def proc( host_ip : str, port_num : int ):
-    num_loop = 100
+    num_loop = 400
     elapsed_time = 0.0
     failed_counter = 0
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((host_ip, port_num))
         for _ in tqdm.tqdm(range(num_loop)):
             start_time = time.perf_counter()
-            current_pose = np.random.rand( 45 ).astype( np.float32 ) * 0.8
+            current_pose = np.random.rand( 45 ).astype( np.float32 ) * 0.4
             sock.sendall( current_pose.tobytes() )
-            recv_data = sock.recv( 1024 * 1024 )
-            if len( recv_data ) > 1:
-                png_data = recv_data
+
+            length = None
+            frame_buffer = bytearray()
+            recv_failed = False
+            while True:
+                recv_data = sock.recv( 1024 )
+                if length is None and recv_data == b"x00":
+                    recv_failed = True
+                    break
+                if len( recv_data ) == 0:
+                    recv_failed = True
+                    break
+                frame_buffer += recv_data
+                if len( frame_buffer ) == length:
+                    recv_failed = False
+                    break
+                if length is None:
+                    if b":" not in frame_buffer:
+                        recv_failed = True
+                        break
+                    length_str, ignored, frame_buffer = frame_buffer.partition(b":")
+                    length = int( length_str )
+            if not recv_failed:
+                png_data = frame_buffer
+                end_time = time.perf_counter()
+                elapsed_time += end_time - start_time
             else:
                 failed_counter +=1
-            end_time = time.perf_counter()
-            elapsed_time += end_time - start_time
         
-    print( "fps = {0:f}".format( num_loop / elapsed_time ) )
-    print( "packet loss ratio : {0:d}".format( failed_counter ) )
+    print( "average fps : {0:f}".format( ( num_loop - failed_counter ) / elapsed_time ) )
+    print( "packet loss ratio : {0:.2f} %".format( 100 *  failed_counter / num_loop ) )
     with open( "recieved.png" , "wb" )  as fp:
         fp.write( png_data )
 
@@ -33,7 +54,8 @@ if __name__ == "__main__":
     if len( sys.argv ) > 1:
         host_ip = sys.argv[1]
     else:
-        host_ip = "localhost"
+        # host_ip = "localhost"
+        host_ip = "192.168.10.16"
     if len( sys.argv ) > 2:
         num_port = int( sys.argv[2] )
     else:
