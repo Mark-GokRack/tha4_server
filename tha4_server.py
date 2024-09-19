@@ -41,17 +41,26 @@ def get_tha4_handler( model_path : str ) -> socketserver.BaseRequestHandler:
                 except:
                     self.request.sendall( b'\x00' )
                 else:
-                    pose = torch.tensor( current_pose, dtype=self.poser.get_dtype(), device=self.device )
-                    output_image = self.poser.pose( self.source_image, pose )[0].float()
-                    output_image = torch.clip((output_image + 1.0) / 2.0, 0.0, 1.0)
-                    output_image = blend_with_background( output_image, self.background_image )
-                    output_image = 255.0 * convert_linear_to_srgb(output_image)
-                    output_image = output_image.byte()
-                    png_data = torchvision.io.encode_png(
-                        output_image.detach().cpu()[:3,:,:],
-                        self.png_compress_level
-                    ).numpy().tobytes()
-                    self.request.sendall( png_data )
+                    if len(current_pose) != 45:
+                        self.request.sendall( b'\x00' )
+                    else:
+                        pose = torch.tensor( current_pose, dtype=self.poser.get_dtype(), device=self.device )
+                        output_image = self.poser.pose( self.source_image, pose )[0].float()
+                        output_image = torch.clip((output_image + 1.0) / 2.0, 0.0, 1.0)
+                        output_image = blend_with_background( output_image, self.background_image )
+                        output_image = 255.0 * convert_linear_to_srgb(output_image)
+                        output_image = output_image.byte()
+                        png_data = torchvision.io.encode_png(
+                            output_image.detach().cpu()[:3,:,:],
+                            self.png_compress_level
+                        ).numpy().tobytes()
+                        send_data = bytearray()
+                        send_length = len(png_data)
+                        header = bytes( ("{0}:".format( send_length )).encode() )
+                        send_data += header
+                        send_data += png_data
+
+                        self.request.sendall( send_data )
     return Tha4Handler
 
 def start( model_path : str, host_ip : str, num_port : int ) -> None:
@@ -69,7 +78,8 @@ if __name__ == "__main__":
     if len( sys.argv ) > 2:
         host_ip = sys.argv[2]
     else:
-        host_ip = "localhost"
+        # host_ip = "localhost"
+        host_ip = "192.168.10.16"
     if len( sys.argv ) > 3:
         num_port = int( sys.argv[3] )
     else:
