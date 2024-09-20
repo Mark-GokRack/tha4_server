@@ -78,7 +78,6 @@ def start( model_path : str, host_ip : str, num_port : int ) -> None:
             server.server_close()
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description='start tha4 server.')
     parser.add_argument(
         "-m", "--model_path", action="store", 

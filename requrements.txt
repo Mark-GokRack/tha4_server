@@ -47,7 +47,6 @@ typing-extensions==4.9.0
 urllib3==2.1.0
 werkzeug==3.0.1
 tqdm
---extra-index-url https://extras.wxpython.org/wxPython4/extras/linux/gtk3/
 wxpython==4.2.1
 --extra-index-url https://download.pytorch.org/whl/cu117
 torch==1.13.1+cu117 
