@@ -5,7 +5,34 @@ import sys
 import time
 import tqdm
 
-def proc( host_ip : str, port_num : int ):
+from typing import Tuple
+import argparse
+
+def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
+    length = None
+    frame_buffer = bytearray()
+    recv_failed = False
+    while True:
+        recv_data = sock.recv( 1024 )
+        if length is None and recv_data == b"x00":
+            recv_failed = True
+            break
+        if len( recv_data ) == 0:
+            recv_failed = True
+            break
+        frame_buffer += recv_data
+        if len( frame_buffer ) == length:
+            recv_failed = False
+            break
+        if length is None:
+            if b":" not in frame_buffer:
+                recv_failed = True
+                break
+            length_str, ignored, frame_buffer = frame_buffer.partition(b":")
+            length = int( length_str )
+    return recv_failed, frame_buffer
+
+def proc( host_ip : str, port_num : int ) -> None:
     num_loop = 400
     elapsed_time = 0.0
     failed_counter = 0
@@ -15,28 +42,7 @@ def proc( host_ip : str, port_num : int ):
             start_time = time.perf_counter()
             current_pose = np.random.rand( 45 ).astype( np.float32 ) * 0.4
             sock.sendall( current_pose.tobytes() )
-
-            length = None
-            frame_buffer = bytearray()
-            recv_failed = False
-            while True:
-                recv_data = sock.recv( 1024 )
-                if length is None and recv_data == b"x00":
-                    recv_failed = True
-                    break
-                if len( recv_data ) == 0:
-                    recv_failed = True
-                    break
-                frame_buffer += recv_data
-                if len( frame_buffer ) == length:
-                    recv_failed = False
-                    break
-                if length is None:
-                    if b":" not in frame_buffer:
-                        recv_failed = True
-                        break
-                    length_str, ignored, frame_buffer = frame_buffer.partition(b":")
-                    length = int( length_str )
+            recv_failed, frame_buffer = recv_all( sock )
             if not recv_failed:
                 png_data = frame_buffer
                 end_time = time.perf_counter()
@@ -51,13 +57,19 @@ def proc( host_ip : str, port_num : int ):
 
 
 if __name__ == "__main__":
-    if len( sys.argv ) > 1:
-        host_ip = sys.argv[1]
-    else:
-        host_ip = "localhost"
-        # host_ip = "192.168.10.16"
-    if len( sys.argv ) > 2:
-        num_port = int( sys.argv[2] )
-    else:
-        num_port = 9999
-    proc( host_ip, num_port )
+    parser = argparse.ArgumentParser(description='simple client app for tha4 server testing.')
+    parser.add_argument(
+        "-i", "--host_ip", action="store", 
+        dest="host_ip",
+        help="Hostname or IP address of tha4 server.",
+        default="localhost",
+        required = False
+    )
+    parser.add_argument(
+        "-p", "--port", action="store", 
+        dest="port",
+        help="Port number of tha4 server.",
+        default=9999, type=int, required = False
+    )
+    args = parser.parse_args()
+    proc( args.host_ip, args.port )
