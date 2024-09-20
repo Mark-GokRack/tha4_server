@@ -179,8 +179,8 @@ class MainFrame(wx.Frame):
     def create_timer ( self ):
         self.result_timer = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_TIMER, self.update_result_panel, id=self.result_timer.GetId())
-        self.capture_timer = wx.Timer(self, wx.ID_ANY)
-        self.Bind(wx.EVT_TIMER, self.update_capture_panel, id=self.capture_timer.GetId())
+        # self.capture_timer = wx.Timer(self, wx.ID_ANY)
+        # self.Bind(wx.EVT_TIMER, self.update_capture_panel, id=self.capture_timer.GetId())
         self.Bind(wx.EVT_CLOSE, self.on_close)
 
     def create_media_panel( self, parent ):
@@ -251,7 +251,7 @@ class MainFrame(wx.Frame):
     def on_close(self, event: wx.Event):
         # Stop the timers
         self.result_timer.Stop()
-        self.capture_timer.Stop()
+        # self.capture_timer.Stop()
         # Stop the socket.
         self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
@@ -269,6 +269,10 @@ class MainFrame(wx.Frame):
             current_pose = np.zeros( [45], dtype=np.float32 )
 
         self.sock.sendall( current_pose.tobytes() )
+
+        ## update capture panel between socket communication.
+        self.update_capture_panel( event )
+
         recv_failed, png_image = recv_all( self.sock )
 
         if not recv_failed:
@@ -334,7 +338,7 @@ if __name__ == "__main__":
         "-i", "--host_ip", action="store", 
         dest="host_ip",
         help="Hostname or IP address of tha4 server.",
-        default="192.168.10.16",
+        default="localhost",
         required = False
     )
     parser.add_argument(
@@ -362,5 +366,5 @@ if __name__ == "__main__":
     main_frame = MainFrame(args.host_ip, args.port, pose_converter, video_capture, face_landmarker)
     main_frame.Show(True)
     main_frame.result_timer.Start(1)
-    main_frame.capture_timer.Start(1)
+    # main_frame.capture_timer.Start(1)
     app.MainLoop()
