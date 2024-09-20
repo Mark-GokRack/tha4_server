@@ -1,6 +1,5 @@
 # tha4_server
 
-
 ## Instructions
 
 ### prepare mediapipe
@@ -47,5 +46,26 @@
     -i HOST_IP, --host_ip HOST_IP
                         Hostname or IP address for socket listening.
     -p PORT, --port PORT  Port number for socket listening.
+    ```
+
+
+## start client
+
+- start client application with following command:
+  ```
+  python tha4_client_character_model_mediapipe_puppeteer.py
+  ```
+  - usage can show with "-h" option.
+    ```
+    > python tha4_client_character_model_mediapipe_puppeteer.py -h
+    usage: tha4_client_character_model_mediapipe_puppeteer.py [-h] [-i HOST_IP] [-p PORT]
+
+    GUI version of simple client app for tha4 server testing.
+
+    options:
+      -h, --help            show this help message and exit
+      -i HOST_IP, --host_ip HOST_IP
+                            Hostname or IP address of tha4 server.
+    -p PORT, --port PORT  Port number of tha4 server.
     ```
 
