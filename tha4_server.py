@@ -56,18 +56,20 @@ def get_tha4_handler( model_path : str ) -> socketserver.BaseRequestHandler:
             return png_data
 
         def handle(self):
-            while data := self.request.recv(1024):
-                try:
-                    current_pose = np.frombuffer( data.strip(), dtype=np.float32 )
-                except:
-                    self.request.sendall( b'\x00' ) # tell failure to client
-                else:
-                    if len(current_pose) != 45:
+            try:
+                while data := self.request.recv(1024):
+                    try:
+                        current_pose = np.frombuffer( data.strip(), dtype=np.float32 )
+                    except:
                         self.request.sendall( b'\x00' ) # tell failure to client
                     else:
-                        png_data = self.__inference_png_data( current_pose )
-                        self.__sendall_with_length( png_data )
-
+                        if len(current_pose) != 45:
+                            self.request.sendall( b'\x00' ) # tell failure to client
+                        else:
+                            png_data = self.__inference_png_data( current_pose )
+                            self.__sendall_with_length( png_data )
+            except ConnectionResetError:
+                pass
     return Tha4Handler
 
 def start( model_path : str, host_ip : str, num_port : int ) -> None:
