@@ -21,15 +21,11 @@ def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     recv_failed = False
     while True:
         recv_data = sock.recv( 1024 )
-        if length is None and recv_data == b"x00":
-            recv_failed = True
-            break
-        if len( recv_data ) == 0:
+        if len( recv_data ) == 0 or ( length is None and recv_data == b"x00" ):
             recv_failed = True
             break
         frame_buffer += recv_data
         if len( frame_buffer ) == length:
-            recv_failed = False
             break
         if length is None:
             if b":" not in frame_buffer:
@@ -198,13 +194,12 @@ class MainFrame(wx.Frame):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='simple client app for tha4 server testing.')
+    parser = argparse.ArgumentParser(description='GUI version of simple client app for tha4 server testing.')
     parser.add_argument(
         "-i", "--host_ip", action="store", 
         dest="host_ip",
         help="Hostname or IP address of tha4 server.",
         default="localhost",
-        # default="192.168.10.16",
         required = False
     )
     parser.add_argument(

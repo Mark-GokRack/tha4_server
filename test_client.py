@@ -16,21 +16,17 @@ def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     recv_failed = False
     while True:
         recv_data = sock.recv( 1024 )
-        if length is None and recv_data == b"x00":
-            recv_failed = True
-            break
-        if len( recv_data ) == 0:
+        if len( recv_data ) == 0 or ( length is None and recv_data == b"x00" ):
             recv_failed = True
             break
         frame_buffer += recv_data
         if len( frame_buffer ) == length:
-            recv_failed = False
             break
         if length is None:
             if b":" not in frame_buffer:
                 recv_failed = True
                 break
-            length_str, ignored, frame_buffer = frame_buffer.partition(b":")
+            length_str, _, frame_buffer = frame_buffer.partition(b":")
             length = int( length_str )
     return recv_failed, frame_buffer
 
