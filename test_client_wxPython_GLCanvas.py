@@ -39,23 +39,23 @@ def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
             length = int( length_str )
     return recv_failed, frame_buffer
 
-class FpsStatistics:
+class AverageCalculator:
     def __init__(self):
         self.count = 100
-        self.fps = np.zeros( [self.count] )
+        self.values = np.zeros( [self.count] )
         self.is_first_loop = True
         self.idx = 0
-    def add_fps(self, fps):
-        self.fps[self.idx] = fps
+    def add(self, value):
+        self.values[self.idx] = value
         self.idx+=1
         if self.idx >= self.count:
             self.is_first_loop = False
             self.idx = 0
-    def get_average_fps(self):
+    def get_average(self):
         if self.is_first_loop:
-            return np.average( self.fps[:self.idx] )
+            return np.average( self.values[:self.idx] )
         else:
-            return np.average( self.fps )
+            return np.average( self.values )
 
 class ImageGLCanvas(glcanvas.GLCanvas):
     def __init__(self, parent, width, height):
@@ -98,14 +98,6 @@ class ImageGLCanvas(glcanvas.GLCanvas):
         glClearColor(1.0, 1.0, 1.0, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         if self.image_data is not None:
-            """
-            glDrawPixels(
-                self.size.width,
-                self.size.height,
-                GL_RGB, GL_UNSIGNED_BYTE,
-                self.image_data.data
-            )
-            """
             glEnable( GL_TEXTURE_2D )
             glBindTexture(GL_TEXTURE_2D, self.image_texture )
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -131,14 +123,13 @@ class ImageGLCanvas(glcanvas.GLCanvas):
         self.SwapBuffers()
 
 class MainFrame(wx.Frame):
-
     def __init__(self, host_ip : str, port : int ):
         super().__init__(None, wx.ID_ANY, "THA4 Client : random pose")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect( (host_ip, port) )
         self.last_update_time = None
 
-        self.fps_statistics = FpsStatistics()
+        self.resp_time_calculator = AverageCalculator()
 
         self.create_ui()
         self.create_timer()
@@ -157,8 +148,8 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
 
     def create_animation_panel( self, parent ):
-        self.image_panel = wx.Panel( parent, size=(512,512), style=wx.SIMPLE_BORDER )
-        self.image_panel_sizer = wx.BoxSizer()
+        self.image_panel = wx.Panel( parent, style=wx.SIMPLE_BORDER )
+        self.image_panel_sizer = wx.BoxSizer( wx.VERTICAL )
         self.image_panel.SetSizer(self.image_panel_sizer)
         self.image_panel.SetAutoLayout(1)
         self.image_canvas_gl = ImageGLCanvas( self.image_panel, 512, 512 )
@@ -166,6 +157,10 @@ class MainFrame(wx.Frame):
         self.image_canvas_gl.SetSizer(self.image_canvas_gl_sizer)
         self.image_canvas_gl.SetAutoLayout(1)
         self.image_panel_sizer.Add( self.image_canvas_gl, 0, wx.FIXED_MINSIZE )
+
+        self.resp_time_text = wx.StaticText( self.image_panel, label="" )
+        self.image_panel_sizer.Add( self.resp_time_text, wx.SizerFlags().Border() )
+
         self.image_canvas_gl_sizer.Fit(self.image_canvas_gl)
         self.image_panel_sizer.Fit(self.image_panel)
 
@@ -194,10 +189,11 @@ class MainFrame(wx.Frame):
         time_now = time.perf_counter()
         if self.last_update_time is not None:
             elapsed_time = time_now - self.last_update_time
-            fps = 1.0 / elapsed_time
-            self.fps_statistics.add_fps( fps )
+            self.resp_time_calculator.add( elapsed_time * 1000 )
         self.last_update_time = time_now
-
+        self.resp_time_text.SetLabelText( 
+            "average response time = {0:.2f} ms".format( self.resp_time_calculator.get_average() )
+        )
         self.Refresh()
 
 
@@ -207,8 +203,8 @@ if __name__ == "__main__":
         "-i", "--host_ip", action="store", 
         dest="host_ip",
         help="Hostname or IP address of tha4 server.",
-        # default="localhost",
-        default="192.168.10.16",
+        default="localhost",
+        # default="192.168.10.16",
         required = False
     )
     parser.add_argument(
