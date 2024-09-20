@@ -1,12 +1,14 @@
 import socket
 import numpy as np
-import sys
 
 import time
 import tqdm
 
 from typing import Tuple
 import argparse
+
+import torch
+import torchvision
 
 def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     length = None
@@ -33,7 +35,7 @@ def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     return recv_failed, frame_buffer
 
 def proc( host_ip : str, port_num : int ) -> None:
-    num_loop = 400
+    num_loop = 100
     elapsed_time = 0.0
     failed_counter = 0
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -45,6 +47,12 @@ def proc( host_ip : str, port_num : int ) -> None:
             recv_failed, frame_buffer = recv_all( sock )
             if not recv_failed:
                 png_data = frame_buffer
+
+                tensor_png_data = torch.from_numpy( np.frombuffer( png_data, dtype=np.uint8 ) )
+                image_data = torchvision.io.decode_png(
+                    tensor_png_data
+                ).permute(1,2,0).numpy()
+
                 end_time = time.perf_counter()
                 elapsed_time += end_time - start_time
             else:
@@ -55,6 +63,7 @@ def proc( host_ip : str, port_num : int ) -> None:
     with open( "recieved.png" , "wb" )  as fp:
         fp.write( png_data )
 
+    np.save("recieved.npy", image_data)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='simple client app for tha4 server testing.')
