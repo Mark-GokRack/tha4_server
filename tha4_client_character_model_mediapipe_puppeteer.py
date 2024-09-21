@@ -351,7 +351,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-w", "--show_webcam", action="store_true", 
         dest="webcam",
-        help="set flag to show webcam capture screen"
+        help="set flag to display webcam capture screen"
     )
     args = parser.parse_args()
 
