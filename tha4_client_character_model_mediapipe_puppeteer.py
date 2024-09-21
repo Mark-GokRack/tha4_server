@@ -55,8 +55,8 @@ def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     return recv_failed, frame_buffer
 
 class AverageCalculator:
-    def __init__(self):
-        self.count = 100
+    def __init__(self, count=100):
+        self.count = count
         self.values = np.zeros( [self.count] )
         self.is_first_loop = True
         self.idx = 0
@@ -93,7 +93,6 @@ class ImageGLCanvas(glcanvas.GLCanvas):
         self.image_texture = None
 
     def InitGL(self):
-        glEnable(GL_TEXTURE_2D)
         glViewport(0, 0, self.size.width, self.size.height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -138,7 +137,7 @@ class ImageGLCanvas(glcanvas.GLCanvas):
             glVertex3d(-1.0,  1.0,  0.0)
             glEnd()
             glDisable( GL_TEXTURE_2D )
-            glFlush()
+            # glFlush()
         self.SwapBuffers()
 
 class MainFrame(wx.Frame):
@@ -146,33 +145,36 @@ class MainFrame(wx.Frame):
         self, host_ip : str, port : int,
         pose_converter: MediaPoseFacePoseConverter00,
         video_capture : cv2.VideoCapture,
-        face_landmarker: FaceLandmarker
+        face_landmarker: FaceLandmarker,
+        show_webcam_info : bool = False
     ):
         super().__init__(None, wx.ID_ANY, "THA4 Client : mediapipe puppeteer")
         self.face_landmarker = face_landmarker
         self.video_capture = video_capture
         self.pose_converter = pose_converter
         self.mediapipe_face_pose = None
+        self.show_webcam_info = show_webcam_info
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect( (host_ip, port) )
         self.last_update_time = None
 
-        self.resp_time_calculator = AverageCalculator()
-        self.failure_ratio_calculator = AverageCalculator()
+        self.resp_time_calculator = AverageCalculator(100)
+        self.failure_ratio_calculator = AverageCalculator(100)
 
-        self.create_ui()
+        self.create_ui(show_webcam_info)
         self.create_timer()
 
-    def create_ui( self ):
+    def create_ui( self, show_webcam_info ):
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.main_sizer)
         self.SetAutoLayout(1)
         self.create_media_panel(self)
         self.main_sizer.Add(self.media_panel, wx.SizerFlags(0).Expand().Border(wx.ALL, 5))
 
-        self.create_capture_panel(self)
-        self.main_sizer.Add( self.capture_panel, wx.SizerFlags(0).Expand().Border(wx.ALL, 5))
+        if show_webcam_info:
+            self.create_capture_panel(self)
+            self.main_sizer.Add( self.capture_panel, wx.SizerFlags(0).Expand().Border(wx.ALL, 5))
 
         self.main_sizer.Fit(self)
 
@@ -193,7 +195,7 @@ class MainFrame(wx.Frame):
             return self.mediapipe_face_pose
         self.pose_converter.init_pose_converter_panel(self.media_panel, current_pose_supplier)
 
-        self.result_panel = wx.Panel( self.media_panel, size=(512,560), style=wx.SIMPLE_BORDER)
+        self.result_panel = wx.Panel( self.media_panel, size=(512,600), style=wx.SIMPLE_BORDER)
         self.result_panel_sizer = wx.BoxSizer( wx.VERTICAL )
         self.result_panel.SetSizer(self.result_panel_sizer)
         self.result_panel.SetAutoLayout(1)
@@ -218,8 +220,8 @@ class MainFrame(wx.Frame):
         self.webcam_capture_panel_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.webcam_canvus = ImageGLCanvas( self.webcam_capture_panel, 256, 192 )
         self.webcam_capture_panel_sizer.Add( self.webcam_canvus, 0, wx.FIXED_MINSIZE )
-
         self.capture_panel_sizer.Add(self.webcam_capture_panel, wx.SizerFlags(0).FixedMinSize().Border(wx.ALL, 5))
+
         self.rotation_labels = {}
         self.rotation_value_labels = {}
         rotation_column = self.create_rotation_column(self.capture_panel, HEAD_ROTATIONS)
@@ -267,7 +269,6 @@ class MainFrame(wx.Frame):
             )
         else:
             current_pose = np.zeros( [45], dtype=np.float32 )
-
         self.sock.sendall( current_pose.tobytes() )
 
         ## update capture panel between socket communication.
@@ -281,13 +282,14 @@ class MainFrame(wx.Frame):
             ).permute(1,2,0).numpy().tobytes()
             self.result_canvus.setImage( image_data )
             self.failure_ratio_calculator.add( 0 )
+            self.result_panel.Refresh()
         else:
             self.failure_ratio_calculator.add( 100 )
 
         time_now = time.perf_counter()
         if self.last_update_time is not None:
             elapsed_time = time_now - self.last_update_time
-            self.resp_time_calculator.add( elapsed_time * 1000 )
+            self.resp_time_calculator.add( elapsed_time * 1000.0 )
         self.last_update_time = time_now
         self.resp_time_text.SetLabelText( 
             "average response time = {0:.2f} ms".format( self.resp_time_calculator.get_average() )
@@ -295,17 +297,15 @@ class MainFrame(wx.Frame):
         self.failure_ratio_text.SetLabelText( 
             "failure ratio = {0:.2f} %".format( self.failure_ratio_calculator.get_average() )
         )
-        self.result_panel.Refresh()
 
     def update_capture_panel(self, event: wx.Event):
         there_is_frame, frame = self.video_capture.read()
         if there_is_frame:
             rgb_frame = cv2.flip(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), 1)
-            self.webcam_canvus.setImage( cv2.resize(rgb_frame, (256, 192)).tobytes() )
-
-            self.webcam_capture_panel.Refresh()
-
-            time_ms = int(time.time() * 1000)
+            if self.show_webcam_info:
+                self.webcam_canvus.setImage( cv2.resize(rgb_frame, (256, 192)).tobytes() )
+                self.webcam_capture_panel.Refresh()
+            time_ms = int(time.perf_counter() * 1000)
             mediapipe_image = mediapipe.Image(image_format=mediapipe.ImageFormat.SRGB, data=rgb_frame)
             detection_result = self.face_landmarker.detect_for_video(mediapipe_image, time_ms)
             self.update_mediapipe_face_pose(detection_result)
@@ -322,12 +322,13 @@ class MainFrame(wx.Frame):
         rot = Rotation.from_matrix(M)
         euler_angles = rot.as_euler('xyz', degrees=True)
 
-        self.rotation_value_labels[HEAD_X].SetValue("%0.2f" % euler_angles[0])
-        self.rotation_value_labels[HEAD_X].Refresh()
-        self.rotation_value_labels[HEAD_Y].SetValue("%0.2f" % euler_angles[1])
-        self.rotation_value_labels[HEAD_Y].Refresh()
-        self.rotation_value_labels[HEAD_Z].SetValue("%0.2f" % euler_angles[2])
-        self.rotation_value_labels[HEAD_Z].Refresh()
+        if self.show_webcam_info:
+            self.rotation_value_labels[HEAD_X].SetValue("%0.2f" % euler_angles[0])
+            self.rotation_value_labels[HEAD_X].Refresh()
+            self.rotation_value_labels[HEAD_Y].SetValue("%0.2f" % euler_angles[1])
+            self.rotation_value_labels[HEAD_Y].Refresh()
+            self.rotation_value_labels[HEAD_Z].SetValue("%0.2f" % euler_angles[2])
+            self.rotation_value_labels[HEAD_Z].Refresh()
 
         self.mediapipe_face_pose = MediaPipeFacePose(blendshape_params, xform_matrix)
 
@@ -347,6 +348,11 @@ if __name__ == "__main__":
         help="Port number of tha4 server.",
         default=9999, type=int, required = False
     )
+    parser.add_argument(
+        "-w", "--show_webcam", action="store_true", 
+        dest="webcam",
+        help="set flag to show webcam capture screen"
+    )
     args = parser.parse_args()
 
     pose_converter = MediaPoseFacePoseConverter00()
@@ -363,7 +369,11 @@ if __name__ == "__main__":
     video_capture = cv2.VideoCapture(0)
 
     app = wx.App()
-    main_frame = MainFrame(args.host_ip, args.port, pose_converter, video_capture, face_landmarker)
+    main_frame = MainFrame(
+        args.host_ip, args.port,
+        pose_converter, video_capture, face_landmarker,
+        args.webcam
+    )
     main_frame.Show(True)
     main_frame.result_timer.Start(1)
     # main_frame.capture_timer.Start(1)
