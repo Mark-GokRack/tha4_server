@@ -77,6 +77,8 @@ this scripts aim to implement server-client model to [talking-head-anime-4-demo]
                             Hostname or IP address of tha4 server.
       -p PORT, --port PORT  Port number of tha4 server.
       -w, --show_webcam     set flag to display webcam capture screen
+      -d DELAY, --delay DELAY
+                            set image delaytime in second.
     ```
   
     - Set the IP address to the address of the PC that is running above server script.

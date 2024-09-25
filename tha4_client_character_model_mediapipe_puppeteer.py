@@ -16,6 +16,8 @@ import torchvision
 from typing import Tuple, Optional
 import argparse
 
+from collections import deque
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -146,7 +148,8 @@ class MainFrame(wx.Frame):
         pose_converter: MediaPoseFacePoseConverter00,
         video_capture : cv2.VideoCapture,
         face_landmarker: FaceLandmarker,
-        show_webcam_info : bool = False
+        show_webcam_info : bool = False,
+        delay_time : float = 0.0
     ):
         super().__init__(None, wx.ID_ANY, "THA4 Client : mediapipe puppeteer")
         self.face_landmarker = face_landmarker
@@ -154,6 +157,8 @@ class MainFrame(wx.Frame):
         self.pose_converter = pose_converter
         self.mediapipe_face_pose = None
         self.show_webcam_info = show_webcam_info
+        self.delay_deque = deque()
+        self.delay_time = delay_time
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect( (host_ip, port) )
@@ -262,6 +267,8 @@ class MainFrame(wx.Frame):
         event.Skip()
 
     def update_result_panel(self, event:Optional[wx.Event] = None):
+        time_now = time.perf_counter()
+
         if self.mediapipe_face_pose is not None:
             current_pose = np.asarray(
                 self.pose_converter.convert(self.mediapipe_face_pose),
@@ -280,13 +287,18 @@ class MainFrame(wx.Frame):
             image_data = torchvision.io.decode_png(
                 torch.from_numpy( np.frombuffer( png_image, dtype=np.uint8 ) )
             ).permute(1,2,0).numpy().tobytes()
-            self.result_canvus.setImage( image_data )
+            self.delay_deque.append( ( time_now + self.delay_time, image_data ))
+            # self.result_canvus.setImage( image_data )
             self.failure_ratio_calculator.add( 0 )
-            self.result_panel.Refresh()
+            # self.result_panel.Refresh()
         else:
             self.failure_ratio_calculator.add( 100 )
 
-        time_now = time.perf_counter()
+        if len( self.delay_deque ) > 0 and self.delay_deque[0][0] <= time_now:
+            _, image_data = self.delay_deque.popleft()
+            self.result_canvus.setImage( image_data )
+            self.result_panel.Refresh()
+
         if self.last_update_time is not None:
             elapsed_time = time_now - self.last_update_time
             self.resp_time_calculator.add( elapsed_time * 1000.0 )
@@ -353,6 +365,12 @@ if __name__ == "__main__":
         dest="webcam",
         help="set flag to display webcam capture screen"
     )
+    parser.add_argument(
+        "-d", "--delay", action="store", 
+        dest="delay",
+        help="set image delaytime in second.",
+        default=1.0, type=float, required = False
+    )
     args = parser.parse_args()
 
     pose_converter = MediaPoseFacePoseConverter00()
@@ -372,7 +390,7 @@ if __name__ == "__main__":
     main_frame = MainFrame(
         args.host_ip, args.port,
         pose_converter, video_capture, face_landmarker,
-        args.webcam
+        args.webcam, args.delay
     )
     main_frame.Show(True)
     main_frame.result_timer.Start(1)
