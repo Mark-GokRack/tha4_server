@@ -34,7 +34,7 @@ from mediapipe.tasks.python.vision.face_landmarker import FaceLandmarker
 
 from tha4.mocap.mediapipe_constants import HEAD_ROTATIONS, HEAD_X, HEAD_Y, HEAD_Z
 from tha4.mocap.mediapipe_face_pose import MediaPipeFacePose
-from tha4.mocap.mediapipe_face_pose_converter_00 import MediaPoseFacePoseConverter00
+from tha4.mocap.mediapipe_face_pose_converter_00 import MediaPoseFacePoseConverter00, MediaPipeFacePoseConverter00Args
 
 def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     length = None
@@ -369,11 +369,17 @@ if __name__ == "__main__":
         "-d", "--delay", action="store", 
         dest="delay",
         help="set image delaytime in second.",
-        default=1.0, type=float, required = False
+        default=0.0, type=float, required = False
     )
     args = parser.parse_args()
 
-    pose_converter = MediaPoseFacePoseConverter00()
+
+    pose_args = MediaPipeFacePoseConverter00Args(
+        jaw_open_min = 0.05,
+        jaw_open_max = 0.2,
+        eye_surprised_max= 0.4
+    )
+    pose_converter = MediaPoseFacePoseConverter00( pose_args )
     face_landmarker_base_options = mediapipe.tasks.BaseOptions(
         model_asset_path='talking-head-anime-4-demo/data/thirdparty/mediapipe/face_landmarker_v2_with_blendshapes.task')
     options = mediapipe.tasks.vision.FaceLandmarkerOptions(
