@@ -80,17 +80,10 @@ class AverageCalculator:
 class ImageGLCanvas(glcanvas.GLCanvas):
     def __init__(self, parent, width, height):
         self.size = wx.Size( width, height )
-        # super().__init__(parent,size=self.size)
-        # dispAttrs = wx.glcanvas.GLAttributes()
-        # dispAttrs.PlatformDefaults().DoubleBuffer().Depth(32).EndList()
-        glcanvas.GLCanvas.__init__(
-            self, parent, -1, #dispAttrs
-            size=self.size
-        )
+        super().__init__(parent, -1, size=self.size)
         self.init = False
         self.context = glcanvas.GLContext(self)
         self.Bind(wx.EVT_PAINT, self.OnPaint)
-        
         self.image_data = None
         self.image_texture = None
 
@@ -107,7 +100,7 @@ class ImageGLCanvas(glcanvas.GLCanvas):
         self.image_data = image_data
 
     def OnPaint(self, event):
-        dc = wx.PaintDC(self)
+        # dc = wx.PaintDC(self)
         self.SetCurrent(self.context)
         if not self.init:
             self.InitGL()
@@ -297,7 +290,9 @@ class MainFrame(wx.Frame):
         if len( self.delay_deque ) > 0 and self.delay_deque[0][0] <= time_now:
             _, image_data = self.delay_deque.popleft()
             self.result_canvus.setImage( image_data )
+            # self.result_canvus.OnPaint( None )
             self.result_panel.Refresh()
+            self.result_panel.Update()
 
         if self.last_update_time is not None:
             elapsed_time = time_now - self.last_update_time
@@ -317,6 +312,7 @@ class MainFrame(wx.Frame):
             if self.show_webcam_info:
                 self.webcam_canvus.setImage( cv2.resize(rgb_frame, (256, 192)).tobytes() )
                 self.webcam_capture_panel.Refresh()
+                self.webcam_capture_panel.Update()
             time_ms = int(time.perf_counter() * 1000)
             mediapipe_image = mediapipe.Image(image_format=mediapipe.ImageFormat.SRGB, data=rgb_frame)
             detection_result = self.face_landmarker.detect_for_video(mediapipe_image, time_ms)
