@@ -197,8 +197,8 @@ class MainFrame(wx.Frame):
         self.result_panel_sizer = wx.BoxSizer( wx.VERTICAL )
         self.result_panel.SetSizer(self.result_panel_sizer)
         self.result_panel.SetAutoLayout(1)
-        self.result_canvus = ImageGLCanvas( self.result_panel, 512, 512 )
-        self.result_panel_sizer.Add( self.result_canvus, 0, wx.FIXED_MINSIZE )
+        self.result_canvas = ImageGLCanvas( self.result_panel, 512, 512 )
+        self.result_panel_sizer.Add( self.result_canvas, 0, wx.FIXED_MINSIZE )
         self.resp_time_text = wx.StaticText( self.result_panel, label="" )
         self.result_panel_sizer.Add( self.resp_time_text, wx.SizerFlags().Border() )
         self.failure_ratio_text = wx.StaticText( self.result_panel, label="" )
@@ -216,8 +216,8 @@ class MainFrame(wx.Frame):
 
         self.webcam_capture_panel = wx.Panel(self.capture_panel, size=(256, 192), style=wx.SIMPLE_BORDER)
         self.webcam_capture_panel_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.webcam_canvus = ImageGLCanvas( self.webcam_capture_panel, 256, 192 )
-        self.webcam_capture_panel_sizer.Add( self.webcam_canvus, 0, wx.FIXED_MINSIZE )
+        self.webcam_canvas = ImageGLCanvas( self.webcam_capture_panel, 256, 192 )
+        self.webcam_capture_panel_sizer.Add( self.webcam_canvas, 0, wx.FIXED_MINSIZE )
         self.capture_panel_sizer.Add(self.webcam_capture_panel, wx.SizerFlags(0).FixedMinSize().Border(wx.ALL, 5))
 
         self.rotation_labels = {}
@@ -281,7 +281,7 @@ class MainFrame(wx.Frame):
                 torch.from_numpy( np.frombuffer( png_image, dtype=np.uint8 ) )
             ).permute(1,2,0).numpy().tobytes()
             self.delay_deque.append( ( time_now + self.delay_time, image_data ))
-            # self.result_canvus.setImage( image_data )
+            # self.result_canvas.setImage( image_data )
             self.failure_ratio_calculator.add( 0 )
             # self.result_panel.Refresh()
         else:
@@ -289,8 +289,8 @@ class MainFrame(wx.Frame):
 
         if len( self.delay_deque ) > 0 and self.delay_deque[0][0] <= time_now:
             _, image_data = self.delay_deque.popleft()
-            self.result_canvus.setImage( image_data )
-            # self.result_canvus.OnPaint( None )
+            self.result_canvas.setImage( image_data )
+            # self.result_canvas.OnPaint( None )
             self.result_panel.Refresh()
             self.result_panel.Update()
 
@@ -310,7 +310,7 @@ class MainFrame(wx.Frame):
         if there_is_frame:
             rgb_frame = cv2.flip(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), 1)
             if self.show_webcam_info:
-                self.webcam_canvus.setImage( cv2.resize(rgb_frame, (256, 192)).tobytes() )
+                self.webcam_canvas.setImage( cv2.resize(rgb_frame, (256, 192)).tobytes() )
                 self.webcam_capture_panel.Refresh()
                 self.webcam_capture_panel.Update()
             time_ms = int(time.perf_counter() * 1000)
