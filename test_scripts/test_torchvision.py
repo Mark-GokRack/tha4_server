@@ -23,13 +23,16 @@ def blend_with_background( numpy_image, background):
     return torch.cat([new_color, background[3:4, :, :]], dim=0)
 
 def proc(model_path : str ) -> None:
-    device = torch.device("cuda:0")
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
     character_model = CharacterModel.load( model_path )
     source_image = character_model.get_character_image( device )
     poser = character_model.get_poser( device )
     current_pose = np.zeros( [45], dtype=np.float32 ) 
     elapsed_time = 0.0
-    num_loop = 100
+    num_loop = 1000
     png_compress_level  = 1
     png_data = None
     background_image = torch.ones( 4, 512, 512, device=device )
