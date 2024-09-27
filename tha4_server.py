@@ -48,12 +48,16 @@ def get_tha4_handler( model_path : str ) -> socketserver.BaseRequestHandler:
             output_image = torch.clip((output_image + 1.0) / 2.0, 0.0, 1.0)
             output_image = blend_with_background( output_image, self.background_image )
             output_image = 255.0 * convert_linear_to_srgb(output_image)
+            #if True:
             output_image = output_image.byte()
             png_data = torchvision.io.encode_png(
                 output_image.detach().cpu()[:3,:,:],
                 self.png_compress_level
             ).numpy().tobytes()
+            #else:
+            #    png_data = output_image.permute([1,2,0]).detach().cpu().numpy().tobytes()
             return png_data
+                
 
         def handle(self):
             try:
