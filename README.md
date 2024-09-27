@@ -62,12 +62,12 @@ this scripts aim to implement server-client model to [talking-head-anime-4-demo]
 
 - start client application with following command:
   ```
-  python tha4_client_character_model_mediapipe_puppeteer.py
+  python tha4_client.py
   ```
   - usage can show with "-h" option.
     ```
-    > python tha4_client_character_model_mediapipe_puppeteer.py -h
-    usage: tha4_client_character_model_mediapipe_puppeteer.py [-h] [-i HOST_IP] [-p PORT] [-w]
+    > python tha4_client.py -h
+    usage: tha4_client.py [-h] [-i HOST_IP] [-p PORT] [-w]
 
     GUI version of simple client app for tha4 server testing.
 
