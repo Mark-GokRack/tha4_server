@@ -41,7 +41,7 @@ def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     frame_buffer = bytearray()
     recv_failed = False
     while True:
-        recv_data = sock.recv( 1024 )
+        recv_data = sock.recv(1024)
         if len( recv_data ) == 0 or ( length is None and recv_data == b"x00" ):
             recv_failed = True
             break
@@ -304,6 +304,8 @@ class MainFrame(wx.Frame):
         self.failure_ratio_text.SetLabelText( 
             "failure ratio = {0:.2f} %".format( self.failure_ratio_calculator.get_average() )
         )
+        # self.Refresh()
+        # self.Update()
 
     def update_capture_panel(self, event: wx.Event):
         there_is_frame, frame = self.video_capture.read()
@@ -371,8 +373,8 @@ if __name__ == "__main__":
 
 
     pose_args = MediaPipeFacePoseConverter00Args(
-        jaw_open_min = 0.05,
-        jaw_open_max = 0.2,
+        jaw_open_min = 0.1,
+        jaw_open_max = 0.3,
         eye_surprised_max= 0.4
     )
     pose_converter = MediaPoseFacePoseConverter00( pose_args )
