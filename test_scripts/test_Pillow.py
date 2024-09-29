@@ -21,7 +21,10 @@ import torch
 import torchvision
 
 def proc(model_path : str ) -> None:
-    device = torch.device("cuda:0")
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
     character_model = CharacterModel.load( model_path )
     source_image = character_model.get_character_image( device )
     poser = character_model.get_poser( device )

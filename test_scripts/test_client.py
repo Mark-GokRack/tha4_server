@@ -42,13 +42,15 @@ def proc( host_ip : str, port_num : int ) -> None:
             sock.sendall( current_pose.tobytes() )
             recv_failed, frame_buffer = recv_all( sock )
             if not recv_failed:
+                #if True:
                 png_data = frame_buffer
-
-                tensor_png_data = torch.from_numpy( np.frombuffer( png_data, dtype=np.uint8 ) )
+                tensor_png_data = torch.from_numpy( np.frombuffer( frame_buffer, dtype=np.uint8 ) )
                 image_data = torchvision.io.decode_png(
                     tensor_png_data
                 ).permute(1,2,0).numpy()
-
+                #else:
+                #    image_data = np.frombuffer( frame_buffer, dtype=np.uint8 )
+                #    png_data = None
                 end_time = time.perf_counter()
                 elapsed_time += end_time - start_time
             else:
