@@ -31,7 +31,7 @@ def recv_all( sock : socket.socket ) -> Tuple[ bool, bytearray ]:
     return recv_failed, frame_buffer
 
 def proc( host_ip : str, port_num : int ) -> None:
-    num_loop = 100
+    num_loop = 1000
     elapsed_time = 0.0
     failed_counter = 0
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
