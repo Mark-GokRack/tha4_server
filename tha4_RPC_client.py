@@ -258,19 +258,20 @@ class MainFrame(wx.Frame):
         
         self.update_capture_panel( event )
 
-        png_image = future_result.result()
-
-        image_data = torchvision.io.decode_png(
-            torch.from_numpy( np.copy( np.frombuffer( png_image, dtype=np.uint8 ) ) )
-        ).permute(1,2,0).numpy().tobytes()
-        self.delay_deque.append( ( time_now + self.delay_time, image_data ))
-
         if len( self.delay_deque ) > 0 and self.delay_deque[0][0] <= time_now:
             _, image_data = self.delay_deque.popleft()
             self.result_canvas.setImage( image_data )
             # self.result_canvas.OnPaint( None )
             self.result_panel.Refresh()
             self.result_panel.Update()
+
+        png_image = future_result.result()
+
+        image_data = torchvision.io.decode_png(
+            torch.from_numpy( np.copy( np.frombuffer( png_image, dtype=np.uint8 ) ) )
+        ).permute(1,2,0).numpy().tobytes()
+        
+        self.delay_deque.append( ( time_now + self.delay_time, image_data ))
 
         if self.last_update_time is not None:
             elapsed_time = time_now - self.last_update_time
