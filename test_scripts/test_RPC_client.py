@@ -3,6 +3,8 @@ import numpy as np
 from multiprocessing.managers import BaseManager
 import time
 import tqdm
+import zlib
+import pickle
 
 from typing import Tuple
 import argparse
@@ -23,20 +25,29 @@ def proc( host_ip : str, port_num : int ) -> None:
     for _ in tqdm.tqdm(range(num_loop)):
         start_time = time.perf_counter()
         current_pose = np.random.rand( 45 ).astype( np.float32 ) * 0.4
-        png_data = tha4_server.get_png_from_pose( current_pose )
-        tensor_png_data = torch.from_numpy( np.frombuffer( png_data, dtype=np.uint8 ) )
-        image_data = torchvision.io.decode_png(
-            tensor_png_data
-        ).permute(1,2,0).numpy()
-        #else:
-        #    image_data = np.frombuffer( frame_buffer, dtype=np.uint8 )
-        #    png_data = None
+        if False:
+            png_data = tha4_server.get_png_from_pose( current_pose )
+            tensor_png_data = torch.from_numpy( png_data )
+            image_data = torchvision.io.decode_png(
+                tensor_png_data
+            ).permute(1,2,0).numpy()
+            #else:
+            #    image_data = np.frombuffer( frame_buffer, dtype=np.uint8 )
+            #    png_data = None
+        elif False:
+            image_data = tha4_server.get_image_from_pose( current_pose )
+            png_data = None
+        else:
+            zipped_image = tha4_server.get_zipped_image_from_pose( current_pose )
+            image_data = pickle.loads( zlib.decompress(zipped_image))
+            png_data = None
         end_time = time.perf_counter()
         elapsed_time += end_time - start_time
-        
+    if png_data is None:
+        png_data = torchvision.io.encode_png( torch.from_numpy( np.copy( image_data ) ), 1 ).numpy()
     print( "average fps : {0:f}".format( ( num_loop - failed_counter ) / elapsed_time ) )
     with open( "recieved.png" , "wb" )  as fp:
-        fp.write( png_data )
+        fp.write( png_data.tobytes() )
 
     np.save("recieved.npy", image_data)
 

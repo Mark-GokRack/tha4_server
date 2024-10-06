@@ -6,6 +6,10 @@ sys.path.append(str(
 ))
 sys.path.append( os.getcwd() )
 
+import zlib
+import pickle
+from enum import Enum
+
 from multiprocessing.managers import BaseManager
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
@@ -116,6 +120,12 @@ class ImageGLCanvas(glcanvas.GLCanvas):
             # glFlush()
         self.SwapBuffers()
 
+
+class ImageType(Enum):
+    RAW=0
+    PNG=1
+    ZIP=2
+
 class MainFrame(wx.Frame):
     def __init__(
         self, host_ip : str, port : int,
@@ -138,6 +148,9 @@ class MainFrame(wx.Frame):
         self.manager = BaseManager(address=(host_ip, port), authkey=b"tha4_rpc")
         self.manager.connect()
         self.tha4_server = self.manager.tha4_scripts()
+
+        self.tha4_image_type = ImageType.ZIP
+
         self.executer = ThreadPoolExecutor(max_workers=1)
         self.last_update_time = None
 
@@ -251,10 +264,22 @@ class MainFrame(wx.Frame):
         else:
             current_pose = np.zeros( [45], dtype=np.float32 )
 
-        future_result = self.executer.submit( 
-            self.tha4_server.get_png_from_pose,
-            current_pose
-        )
+        if self.tha4_image_type == ImageType.RAW:
+            future_result = self.executer.submit( 
+                self.tha4_server.get_image_from_pose,
+                current_pose
+            )
+        elif self.tha4_image_type == ImageType.PNG:
+            future_result = self.executer.submit( 
+                self.tha4_server.get_png_from_pose,
+                current_pose
+            )
+        else: # elif self.tha4_image_type == ImageType.ZIP:
+            future_result = self.executer.submit( 
+                self.tha4_server.get_zipped_image_from_pose,
+                current_pose
+            )
+
         
         self.update_capture_panel( event )
 
@@ -265,11 +290,18 @@ class MainFrame(wx.Frame):
             self.result_panel.Refresh()
             self.result_panel.Update()
 
-        png_image = future_result.result()
-
-        image_data = torchvision.io.decode_png(
-            torch.from_numpy( np.copy( np.frombuffer( png_image, dtype=np.uint8 ) ) )
-        ).permute(1,2,0).numpy().tobytes()
+        if self.tha4_image_type == ImageType.RAW:
+            image_data = future_result.result()
+            image_data = np.transpose( image_data, [1,2,0] )
+        elif self.tha4_image_type == ImageType.PNG:
+            png_image = future_result.result()
+            image_data = torchvision.io.decode_png(
+                torch.from_numpy( np.copy( np.frombuffer( png_image, dtype=np.uint8 ) ) )
+            ).permute(1,2,0).numpy().tobytes()
+        else: # elif self.tha4_image_type == ImageType.ZIP:
+            zipped_data = future_result.result()
+            image_data = pickle.loads( zlib.decompress(zipped_data))
+            image_data = np.transpose( image_data, [1,2,0] )            
         
         self.delay_deque.append( ( time_now + self.delay_time, image_data ))
 
