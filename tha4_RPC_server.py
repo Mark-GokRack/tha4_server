@@ -3,6 +3,8 @@ import sys
 import pathlib
 
 import numpy as np
+import zlib
+import pickle
 
 import torch
 import torchvision
@@ -55,23 +57,34 @@ class Tha4Scripts:
         new_color = color * alpha + (1.0 - alpha) * background[0:3, :, :]
         return torch.cat([new_color, background[3:4, :, :]], dim=0)
 
-    def get_image_from_pose( self, current_pose : np.ndarray ) -> bytearray:
+    def __convert_pose_to_image( self, current_pose : np.ndarray ) -> torch.Tensor:
         pose = torch.tensor( current_pose, dtype=self.poser.get_dtype(), device=self.device )
         output_image = self.poser.pose( self.source_image, pose )[0].float()
         output_image = torch.clip((output_image + 1.0) / 2.0, 0.0, 1.0)
         output_image = self.__blend_with_background( output_image, self.background_image )
         output_image = 255.0 * convert_linear_to_srgb(output_image)
-        output_image = output_image.byte()
+        output_image = output_image.byte().detach().cpu()[:3,:,:]
+        return output_image 
+    
+    def get_image_from_pose( self, current_pose : np.ndarray ) -> bytearray:
+        output_image = self.__convert_pose_to_image( current_pose )
+        output_image = output_image.numpy()
         return output_image
     
     def get_png_from_pose( self, current_pose : np.ndarray ) -> bytearray:
-        output_image = self.get_image_from_pose(current_pose)
+        output_image = self.__convert_pose_to_image(current_pose)
         png_data = torchvision.io.encode_png(
-            output_image.detach().cpu()[:3,:,:],
+            output_image,
             self.png_compress_level
-        ).numpy().tobytes()
+        ).numpy()
         return png_data
-    
+
+    def get_zipped_image_from_pose( self, current_pose : np.ndarray ) -> bytearray:
+        output_image = self.__convert_pose_to_image( current_pose )
+        output_image = output_image.numpy()
+        zipped_image = zlib.compress( pickle.dumps(output_image), level=1 )
+        return zipped_image
+
     """
     def pose_convert( self, mediapipe_face_pose, pose_args )->np.ndarray:
         return np.asarray( np.zeros( [45] ), dtype=np.float32 )
@@ -112,7 +125,7 @@ if __name__ == "__main__":
         "-i", "--host_ip", action="store", 
         dest="host_ip",
         help="Hostname or IP address for socket listening.",
-        default="localhost",
+        default="",
         required = False
     )
     parser.add_argument(
