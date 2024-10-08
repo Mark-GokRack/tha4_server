@@ -37,7 +37,7 @@ import mediapipe
 
 from mediapipe.tasks.python.vision.face_landmarker import FaceLandmarker
 
-from tha4.mocap.mediapipe_constants import HEAD_ROTATIONS, HEAD_X, HEAD_Y, HEAD_Z
+from tha4.mocap.mediapipe_constants import EYE_SQUINT_LEFT, EYE_SQUINT_RIGHT, HEAD_ROTATIONS, HEAD_X, HEAD_Y, HEAD_Z
 from tha4.mocap.mediapipe_face_pose import MediaPipeFacePose
 from tha4.mocap.mediapipe_face_pose_converter_00 import MediaPoseFacePoseConverter00, MediaPipeFacePoseConverter00Args
 
@@ -279,7 +279,6 @@ class MainFrame(wx.Frame):
                 self.tha4_server.get_zipped_image_from_pose,
                 current_pose
             )
-
         
         self.update_capture_panel( event )
 
@@ -383,7 +382,10 @@ if __name__ == "__main__":
     pose_args = MediaPipeFacePoseConverter00Args(
         jaw_open_min = 0.1,
         jaw_open_max = 0.3,
-        eye_surprised_max= 0.4
+        eye_surprised_max= 0.5,
+        eye_blink_max=1.0,
+        cheek_squint_max=0.5,
+        cheek_squint_min=0.1
     )
     pose_converter = MediaPoseFacePoseConverter00( pose_args )
     face_landmarker_base_options = mediapipe.tasks.BaseOptions(
