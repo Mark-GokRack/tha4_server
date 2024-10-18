@@ -33,7 +33,7 @@ from tha4.image_util import convert_linear_to_srgb
 class Tha4Scripts:
     def __init__( self, model_path : str ):
         self.device = torch.device("cuda:0")
-        self.character_model = CharacterModel.load( model_path )
+        self.character_model = CharacterModel.load( model_path, dtype=torch.float16 )
         self.source_image = self.character_model.get_character_image( self.device )
         self.poser = self.character_model.get_poser( self.device )
         self.background_image = torch.ones( 4, 512, 512, device=self.device )

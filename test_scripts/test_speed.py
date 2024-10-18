@@ -25,9 +25,9 @@ def proc(model_path : str ) -> None:
         device = torch.device("cuda:0")
     else:
         device = torch.device("cpu")
-    character_model = CharacterModel.load( model_path )
+    character_model = CharacterModel.load( model_path, dtype=torch.float16 )
     source_image = character_model.get_character_image( device )
-    poser = character_model.get_poser( device, dtype=torch.float32 )
+    poser = character_model.get_poser( device )
     num_loop = 1000
     png_compress_level  = 1
     png_data = None
@@ -57,8 +57,9 @@ def proc(model_path : str ) -> None:
             )
 
 if __name__ == "__main__":
-    if len( sys.argv ) > 1:
-        model_path = sys.argv[1]
-    else:
-        model_path = "talking-head-anime-4-demo/data/character_models/lambda_00/character_model.yaml"
+    #if len( sys.argv ) > 1:
+    #    model_path = sys.argv[1]
+    #else:
+    #    model_path = "talking-head-anime-4-demo/data/character_models/lambda_00/character_model.yaml"
+    model_path = "models/carrot_girl_3_1/character_model/character_model.yaml"
     proc( model_path )
